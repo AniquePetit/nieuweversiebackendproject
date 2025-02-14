@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # BED Final Project Starter
 
 This repository contains starter code for the Bookings project.
@@ -60,3 +61,6 @@ npm test
 After this, you will see the test results prompted to the terminal. If you have a look at the `package.json` file, you will see that it executes the collection stored in the `postman` folder of the repo root.
 
 Important: When dealing with JSON data, please, make sure that you restart the server with `npm run dev` every time you execute tests! This is important because some tests will remove data via DELETE endpoints and that operation cannot be repeated with the same ID again and again.
+=======
+# nieuweversiebackendproject
+>>>>>>> 06d8e0a767df1245fdebd979fa1052bf9a71f1d9
