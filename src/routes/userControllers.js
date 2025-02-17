@@ -1,5 +1,6 @@
+// src/routes/userControllers.js
 import bcrypt from 'bcrypt';
-import prisma from '../prisma/prismaClient.js';  // Make sure your prismaClient.js uses ES module syntax
+import prisma from '../prisma/prismaClient.js';  // Gebruik default import
 import * as Sentry from '@sentry/node';
 
 async function createUser(req, res) {

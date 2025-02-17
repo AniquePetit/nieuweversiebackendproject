@@ -1,91 +1,131 @@
-import { PrismaClient } from '@prisma/client';  // Gebruik 'import' i.p.v. 'require'
-import bcrypt from 'bcryptjs';  // Voeg bcrypt toe voor wachtwoord hashing
+import { PrismaClient } from '@prisma/client';
+import amenityData from '../src/data/amenities.json' assert { type: 'json' };
+import bookingData from '../src/data/bookings.json' assert { type: 'json' };
+import hostData from '../src/data/hosts.json' assert { type: 'json' };
+import propertyData from '../src/data/properties.json' assert { type: 'json' };
+import reviewData from '../src/data/reviews.json' assert { type: 'json' };
+import userData from '../src/data/users.json' assert { type: 'json' };
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ log: ["query", "info", "warn", "error"] });
 
 async function main() {
-  console.log('Seeding database...');
+    const { amenities } = amenityData;
+    const { bookings } = bookingData;
+    const { hosts } = hostData;
+    const { properties } = propertyData;
+    const { reviews } = reviewData;
+    const { users } = userData;
 
-  // Hash het wachtwoord voor de gebruiker
-  const hashedPassword = await bcrypt.hash('hashedpassword123', 10);
+    // Upsert Amenities
+    for (const amenity of amenities) {
+        await prisma.amenity.upsert({
+            where: { id: amenity.id },
+            update: {},
+            create: amenity,
+        });
+    }
 
-  // Voeg een User toe met een unieke gebruikersnaam en e-mailadres
-  const user = await prisma.user.create({
-    data: {
-      username: `johndoe${Date.now()}`,  // Unieke gebruikersnaam met timestamp
-      email: `johndoe${Date.now()}@example.com`,  // E-mailadres aangepast met timestamp voor uniciteit
-      password: hashedPassword, // Gehasht wachtwoord opslaan
-    },
-  });
+    // Upsert Hosts
+    for (const host of hosts) {
+        await prisma.host.upsert({
+            where: { id: host.id },
+            update: {},
+            create: host,
+        });
+    }
 
-  // Voeg een Host toe met een uniek e-mailadres
-  const host = await prisma.host.create({
-    data: {
-      name: 'Linda Smith',
-      email: `linda${Date.now()}@example.com`,  // E-mailadres aangepast met timestamp voor uniciteit
-    },
-  });
+    // Upsert Users
+    for (const user of users) {
+        await prisma.user.upsert({
+            where: { id: user.id },
+            update: {},
+            create: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                password: user.password,
+                username: user.username,
+                phoneNumber: user.phoneNumber,
+                profilePicture: user.profilePicture
+            },
+        });
+    }
 
-  // Voeg een Property toe en koppel deze aan de Host
-  const property = await prisma.property.create({
-    data: {
-      title: 'Gezellig strandhuis',
-      location: 'Malibu, California',
-      pricePerNight: 310.25,
-      hostId: host.id, // Koppel aan Host
-    },
-  });
+    // Upsert Properties
+    for (const property of properties) {
+        await prisma.property.upsert({
+            where: { id: property.id },
+            update: {},
+            create: {
+                id: property.id,
+                name: property.name,
+                location: property.location,
+                price: property.price,
+                hostId: property.hostId,
+                title: property.title,
+                description: property.description,
+                pricePerNight: property.pricePerNight,
+                bedroomCount: property.bedroomCount,
+                bathRoomCount: property.bathRoomCount,
+                maxGuestCount: property.maxGuestCount,
+                rating: property.rating
+            },
+        });
+    }
 
-  // Voeg Amenities toe
-  const wifi = await prisma.amenity.create({
-    data: { name: 'Wifi' },
-  });
+    // Upsert Bookings
+    for (const booking of bookings) {
+        if (!users.some(user => user.id === booking.userId)) {
+            console.error(`User with id ${booking.userId} not found!`);
+            continue; // Skip this booking if the user doesn't exist
+        }
 
-  const pool = await prisma.amenity.create({
-    data: { name: 'Zwembad' },
-  });
+        if (!hosts.some(host => host.id === booking.hostId)) {
+            console.error(`Host with id ${booking.hostId} not found!`);
+            continue; // Skip this booking if the host doesn't exist
+        }
 
-  // Koppel Amenities aan Property
-  await prisma.property.update({
-    where: { id: property.id },
-    data: { amenities: { connect: [{ id: wifi.id }, { id: pool.id }] } },
-  });
+        await prisma.booking.upsert({
+            where: { id: booking.id },
+            update: {},
+            create: {
+                id: booking.id,
+                title: booking.title,
+                userId: booking.userId,
+                propertyId: booking.propertyId,
+                checkinDate: new Date(booking.checkinDate),
+                checkoutDate: new Date(booking.checkoutDate),
+                numberOfGuests: booking.numberOfGuests,
+                totalPrice: booking.totalPrice,
+                bookingStatus: booking.bookingStatus,
+                hostId: booking.hostId,
+            },
+        });
+    }
 
-  // Bereken de totaalprijs van de Booking
-  const startDate = new Date('2025-06-01');
-  const endDate = new Date('2025-06-07');
-  const totalPrice = (endDate - startDate) / (1000 * 3600 * 24) * property.pricePerNight; // Bereken het aantal nachten en vermenigvuldig met de prijs per nacht
-
-  // Voeg een Booking toe
-  const booking = await prisma.booking.create({
-    data: {
-      userId: user.id,
-      propertyId: property.id,
-      startDate: startDate,
-      endDate: endDate,
-      totalPrice: totalPrice, // Voeg de berekende prijs toe
-    },
-  });
-
-  // Voeg een Review toe
-  const review = await prisma.review.create({
-    data: {
-      userId: user.id,
-      propertyId: property.id,
-      rating: 5,
-      comment: 'Geweldige plek! Zeker een aanrader.',
-    },
-  });
-
-  console.log('Seeding voltooid! 🎉');
+    // Upsert Reviews
+    for (const review of reviews) {
+        await prisma.review.upsert({
+            where: { id: review.id },
+            update: {},
+            create: {
+                id: review.id,
+                userId: review.userId,
+                propertyId: review.propertyId,
+                rating: review.rating,
+                comment: review.comment,
+            },
+        });
+    }
 }
 
-// Voer de main functie uit
 main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });  // <-- Zorg ervoor dat deze regel er is! Dit sluit de verbinding netjes af.
+    .then(() => {
+        console.log('Data seeded successfully!');
+        prisma.$disconnect();
+    })
+    .catch((error) => {
+        console.error('Error seeding data:', error);
+        prisma.$disconnect();
+        process.exit(1);
+    });

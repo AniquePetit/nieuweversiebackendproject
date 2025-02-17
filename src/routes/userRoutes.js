@@ -1,5 +1,6 @@
+// src/routes/someRouter.js
 import express from 'express';
-import createUser from '../routes/userControllers.js'; // Import default export
+import createUser from './userControllers.js'; // Zorg ervoor dat je pad klopt
 
 const router = express.Router();
 
